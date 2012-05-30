@@ -36,7 +36,7 @@ foreach (array_chunk($starts, 5) as $chunk){
 
     $curl = curl_init();
 
-    $files['file-' . $i] = gzopen($file, 'w');
+    $files[$i] = gzopen($file, 'w');
 
     curl_setopt_array($curl, array(
       CURLOPT_URL => 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' . http_build_query($params),
@@ -57,7 +57,7 @@ foreach (array_chunk($starts, 5) as $chunk){
 
   foreach ($connections as $i => $connection) {
     curl_close($connection);
-    gzclose($files['file-' . $i]);
+    gzclose($files[$i]);
   }
 }
 

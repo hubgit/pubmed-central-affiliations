@@ -15,7 +15,6 @@ $params = array(
   'retmode' => 'xml',
   'query_key' => (string) $xml->QueryKey,
   'WebEnv' => (string) $xml->WebEnv,
-  'retstart' => $i,
   'retmax' => 10000,
 );
 
@@ -30,7 +29,7 @@ foreach (array_chunk($starts, 5) as $chunk){
   // build the requests
   foreach ($chunk as $i) {
     $file = $dir . '/' . sprintf($file_template, $i);
-    //if (file_exists($file)) continue;
+    if (file_exists($file)) continue;
 
     $params['retstart'] = $i;
 

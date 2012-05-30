@@ -1,36 +1,64 @@
 <?php
 
-$file_template = 'loprovpmc-%d.xml.gz';
-
 $dir = 'data/pubmed';
 if (!file_exists($dir)) mkdir($dir, 0700, true);
+
+$file_template = 'loprovpmc-%d.xml.gz';
 
 $xml = simplexml_load_file('loprovpmc-search.xml');
 
 $total = (int) $xml->Count;
 print "$total items\n";
 
-for ($i = 0; $i < $total; $i += 10000) {
-  $file = $dir . '/' . sprintf($file_template, $i);
-  if (file_exists($file)) continue;
+$params = array(
+  'db' => 'pubmed',
+  'retmode' => 'xml',
+  'query_key' => (string) $xml->QueryKey,
+  'WebEnv' => (string) $xml->WebEnv,
+  'retstart' => $i,
+  'retmax' => 10000,
+);
 
-  $params = array(
-    'db' => 'pubmed',
-    'retmode' => 'xml',
-    'query_key' => (string) $xml->QueryKey,
-    'WebEnv' => (string) $xml->WebEnv,
-    'retstart' => $i,
-    'retmax' => 10000,
-    );
+$curl_multi = curl_multi_init();
 
-  $url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' . http_build_query($params);
+$starts = range(0, $total, 10000);
 
-  $output = gzopen($file, 'w');
-  $curl = curl_init($url);
-  curl_setopt($curl, CURLOPT_FILE, $output);
-  curl_setopt($curl, CURLOPT_ENCODING, 'gzip,deflate');
-  curl_setopt($curl, CURLOPT_VERBOSE, true);
-  curl_setopt($curl, CURLOPT_NOPROGRESS, false);
-  curl_exec($curl);
-  gzclose($output);
+foreach (array_chunk($starts, 5) as $chunk){
+  // store the file resources so they can be closed when complete
+  $files = array();
+
+  // build the requests
+  foreach ($chunk as $i) {
+    $file = $dir . '/' . sprintf($file_template, $i);
+    //if (file_exists($file)) continue;
+
+    $params['retstart'] = $i;
+
+    $curl = curl_init();
+
+    $files['file-' . $i] = gzopen($file, 'w');
+
+    curl_setopt_array($curl, array(
+      CURLOPT_URL => 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' . http_build_query($params),
+      CURLOPT_FILE => $files[$i],
+      CURLOPT_ENCODING => 'gzip,deflate',
+      CURLOPT_VERBOSE => true,
+    ));
+
+    curl_multi_add_handle($curl_multi, $curl);
+  }
+
+  // execute the requests
+  $active = false;
+  do {
+      curl_multi_exec($curl_multi, $active);
+      usleep(100000);
+  } while ($active);
+
+  foreach ($connections as $i => $connection) {
+    curl_close($connection);
+    gzclose($files['file-' . $i]);
+  }
 }
+
+curl_multi_close($curl_multi);

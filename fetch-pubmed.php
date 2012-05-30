@@ -1,21 +1,14 @@
 <?php
-$query = 'loprovpmc[filter]'; // for example
+
 $file_template = 'loprovpmc-%d.xml.gz';
 
 $dir = 'data/pubmed';
 if (!file_exists($dir)) mkdir($dir, 0700, true);
 
-$params = array(
-  'db' => 'pubmed',
-  'retmode' => 'xml',
-  'retmax' => 1,
-  'usehistory' => 'y',
-  'term' => $query,
-  );
-
-$xml = simplexml_load_file('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?' . http_build_query($params));
+$xml = simplexml_load_file('loprovpmc-search.xml');
 
 $total = (int) $xml->Count;
+print "$total items\n";
 
 for ($i = 0; $i < $total; $i += 10000) {
   $file = $dir . '/' . sprintf($file_template, $i);
